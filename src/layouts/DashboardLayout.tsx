@@ -83,9 +83,9 @@ export default function DashboardLayout() {
           sidebarOpen ? 'translate-x-0' : (isRtl ? 'translate-x-full' : '-translate-x-full')
         )}
       >
-        <div className="flex items-center justify-between h-24 px-6 border-b border-gray-100 bg-gray-50/50">
+        <div className="flex items-center justify-between h-20 px-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
-            <img src="/images/logo.png" alt="Zakat Platform Logo" className="h-10 w-auto object-contain" />
+            <img src="/images/logo.png" alt="Zakat Platform Logo" className="h-14 w-auto object-contain" />
             <span className="font-semibold text-gray-900">{t('nav.title', locale) || 'Zakat Platform'}</span>
           </div>
           <button
@@ -127,13 +127,11 @@ export default function DashboardLayout() {
           <div className="flex flex-col items-center justify-center py-10 px-6 border-b border-gray-50 bg-gradient-to-b from-gray-50/50 to-transparent">
             <div className="relative group cursor-pointer transition-transform duration-500 hover:scale-105">
               <div className="absolute -inset-4 bg-primary-100/20 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="relative bg-white p-4 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.08)] border border-gray-100">
-                <img 
-                  src="/images/logo.png" 
-                  alt="Zakat Platform Logo" 
-                  className="h-28 w-auto object-contain" 
-                />
-              </div>
+              <img 
+                src="/images/logo.png" 
+                alt="Zakat Platform Logo" 
+                className="h-32 w-auto object-contain relative z-10" 
+              />
             </div>
           </div>
 

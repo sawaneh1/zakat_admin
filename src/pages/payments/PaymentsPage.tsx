@@ -75,6 +75,16 @@ export default function PaymentsPage() {
     status: 'confirmed',
   })
 
+  const { data: statsData } = useQuery<{ data: { today: number; this_week: number; this_month: number; pending_total: number; pending_count: number } }>({
+    queryKey: ['payment-stats'],
+    queryFn: async () => {
+      const response = await api.get('/admin/payments/stats')
+      return response.data
+    },
+  })
+
+  const stats = statsData?.data
+
   const { data: donationTypesData } = useQuery<{ data: any[] }>({
     queryKey: ['donation-types'],
     queryFn: async () => {
@@ -216,7 +226,7 @@ export default function PaymentsPage() {
           <CardContent className="py-4">
             <p className="text-sm text-gray-500">{t('payments.today', locale)}</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatCurrency(0)}
+              {formatCurrency(stats?.today ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -224,7 +234,7 @@ export default function PaymentsPage() {
           <CardContent className="py-4">
             <p className="text-sm text-gray-500">{t('payments.this_week', locale)}</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatCurrency(0)}
+              {formatCurrency(stats?.this_week ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -232,7 +242,7 @@ export default function PaymentsPage() {
           <CardContent className="py-4">
             <p className="text-sm text-gray-500">{t('payments.this_month', locale)}</p>
             <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatCurrency(0)}
+              {formatCurrency(stats?.this_month ?? 0)}
             </p>
           </CardContent>
         </Card>
@@ -240,7 +250,12 @@ export default function PaymentsPage() {
           <CardContent className="py-4">
             <p className="text-sm text-gray-500">{t('payments.pending', locale)}</p>
             <p className="text-2xl font-bold text-amber-600 mt-1">
-              {formatCurrency(0)}
+              {formatCurrency(stats?.pending_total ?? 0)}
+              {(stats?.pending_count ?? 0) > 0 && (
+                <span className="text-sm font-normal text-amber-500 ml-1">
+                  ({stats?.pending_count})
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -516,28 +531,78 @@ export default function PaymentsPage() {
                   </div>
                 )}
 
-                {/* External Reference */}
-                {selectedPayment.external_reference && (
-                  <div className="border-t border-gray-200 pt-4 mt-6">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">
-                      {t('payments.external_reference', locale)}
-                    </p>
-                    <code className="text-sm bg-gray-100 px-2 py-1 rounded select-all">
-                      {selectedPayment.external_reference}
-                    </code>
+                {/* Evidence / Receipt */}
+                {(selectedPayment.evidence_path || selectedPayment.evidence_notes || selectedPayment.external_reference) && (
+                  <div className="border-t border-gray-200 pt-4 mt-2 space-y-3">
+                    <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wider">
+                      Transfer Evidence
+                    </h3>
+
+                    {selectedPayment.evidence_path && (
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <DocumentTextIcon className="w-8 h-8 text-blue-600 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900">Receipt uploaded</p>
+                          <p className="text-xs text-gray-500 truncate">{selectedPayment.evidence_path}</p>
+                        </div>
+                        <button
+                          className="px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors"
+                          onClick={async () => {
+                            try {
+                              const res = await api.get(`/admin/payments/${selectedPayment.id}/evidence`, {
+                                responseType: 'blob',
+                              })
+                              const url = window.URL.createObjectURL(res.data)
+                              const contentDisposition = res.headers['content-disposition'] || ''
+                              const isInline = contentDisposition.includes('inline')
+                              if (isInline) {
+                                window.open(url, '_blank')
+                              } else {
+                                const a = document.createElement('a')
+                                a.href = url
+                                a.download = contentDisposition.match(/filename="(.+?)"/)?.[1] || 'evidence'
+                                a.click()
+                                window.URL.revokeObjectURL(url)
+                              }
+                            } catch {
+                              alert('Failed to download evidence file.')
+                            }
+                          }}
+                        >
+                          View
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedPayment.external_reference && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Bank Reference</p>
+                        <code className="text-sm bg-gray-100 px-2 py-1 rounded select-all">
+                          {selectedPayment.external_reference}
+                        </code>
+                      </div>
+                    )}
+
+                    {selectedPayment.evidence_notes && (
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Donor Notes</p>
+                        <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700">
+                          {selectedPayment.evidence_notes}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-                {hasPermission('payments.verify') && selectedPayment.status === 'pending' && (
+                {hasPermission('payments.confirm') && (selectedPayment.status === 'pending' || selectedPayment.status === 'paid_unconfirmed') && (
                   <>
                     <Button
                       variant="danger"
                       onClick={() => {
                         setShowRejectModal(true)
-                        // Don't close main modal yet
                       }}
                       leftIcon={<XCircleIcon className={`w-5 h-5 ${isAr ? 'ml-2' : 'mr-2'}`} />}
                     >
